@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NuGetAudit>false</NuGetAudit>
+    <AssemblyName>AmdHdrScreenshotFixer</AssemblyName>
+    <RootNamespace>AmdHdrScreenshotFixer</RootNamespace>
+    <ApplicationIcon>..\assets\app-icon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AmdHdrScreenshotFixer.Core\AmdHdrScreenshotFixer.Core.csproj" />
+    <Resource Include="..\assets\app-icon.ico" Link="Assets\app-icon.ico" />
+    <EmbeddedResource Include="..\config.json" Link="Defaults\config.json" LogicalName="AmdHdrScreenshotFixer.Defaults.config.json" />
+    <EmbeddedResource Include="..\calibration.json" Link="Defaults\calibration.json" LogicalName="AmdHdrScreenshotFixer.Defaults.calibration.json" />
+  </ItemGroup>
+</Project>

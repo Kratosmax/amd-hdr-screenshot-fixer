@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>$(Version).0</AssemblyVersion>
+    <FileVersion>$(Version).0</FileVersion>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <NuGetAudit>false</NuGetAudit>
+    <Authors>Kratosmax</Authors>
+    <Product>AMD HDR Screenshot Fixer</Product>
+    <Description>Windows GUI tool for correcting AMD HDR screenshots.</Description>
+    <RepositoryUrl>https://github.com/Kratosmax/amd-hdr-screenshot-fixer</RepositoryUrl>
+    <Copyright>Copyright (c) 2026 Kratosmax</Copyright>
+  </PropertyGroup>
+</Project>

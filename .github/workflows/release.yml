@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Verify tag and build signed assets
+        shell: pwsh
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          [xml]$props = Get-Content -Raw Directory.Build.props
+          $version = [string]$props.Project.PropertyGroup.Version
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw "标签与项目版本不一致。" }
+          if ([string]::IsNullOrWhiteSpace($env:UPDATE_SIGNING_KEY)) { throw "缺少 UPDATE_SIGNING_KEY。" }
+          $keyPath = Join-Path $env:RUNNER_TEMP "update-private.pem"
+          try {
+            [IO.File]::WriteAllText($keyPath, $env:UPDATE_SIGNING_KEY)
+            ./scripts/Build-Release.ps1 -PrivateKeyPath $keyPath
+          }
+          finally { Remove-Item -LiteralPath $keyPath -Force -ErrorAction SilentlyContinue }
+
+      - name: Verify signed update packages
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content -Raw Directory.Build.props
+          $version = [string]$props.Project.PropertyGroup.Version
+          $root = "temp/release/v$version"
+          dotnet run --project AmdHdrScreenshotFixer.ReleaseTool/AmdHdrScreenshotFixer.ReleaseTool.csproj --configuration Release --no-build -- verify --channel portable-framework-dependent --manifest "$root/update-lite.json" --package "$root/AmdHdrScreenshotFixer-$version-Lite-Portable.zip"
+          dotnet run --project AmdHdrScreenshotFixer.ReleaseTool/AmdHdrScreenshotFixer.ReleaseTool.csproj --configuration Release --no-build -- verify --channel portable-self-contained --manifest "$root/update-full.json" --package "$root/AmdHdrScreenshotFixer-$version-Full-Portable.zip"
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [xml]$props = Get-Content -Raw Directory.Build.props
+          $version = [string]$props.Project.PropertyGroup.Version
+          $root = "temp/release/v$version"
+          gh release create "v$version" `
+            "$root/AmdHdrScreenshotFixer-$version-Full-Setup.exe" `
+            "$root/AmdHdrScreenshotFixer-$version-Lite-Setup.exe" `
+            "$root/AmdHdrScreenshotFixer-$version-Full-Portable.zip" `
+            "$root/AmdHdrScreenshotFixer-$version-Lite-Portable.zip" `
+            "$root/update.json" "$root/update-lite.json" "$root/update-full.json" `
+            "$root/SHA256SUMS.txt" `
+            --title "AMD HDR Screenshot Fixer $version" `
+            --notes-file RELEASE_NOTES_CURRENT.md --verify-tag

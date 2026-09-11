@@ -1,0 +1,129 @@
+<Window x:Class="AmdHdrScreenshotFixer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AMD HDR Screenshot Fixer" Icon="Assets/app-icon.ico" Width="1120" Height="720"
+        MinWidth="860" MinHeight="580" Background="{StaticResource WindowBrush}"
+        FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="64"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="42"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <Grid Margin="20,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="AMD HDR Screenshot Fixer" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock Text="RGB 实时校色" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,2,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <CheckBox x:Name="WatchToggle" Content="监听" VerticalAlignment="Center" Margin="0,0,12,0"
+                              ToolTip="启动后默认关闭" Checked="WatchToggle_Checked" Unchecked="WatchToggle_Unchecked"/>
+                    <Button x:Name="WatchFolderButton" Content="监听目录" Click="WatchFolderButton_Click" Margin="0,0,8,0"
+                            ToolTip="选择并持久化监听目录"/>
+                    <Button Content="打开 PNG" Click="OpenButton_Click" Margin="0,0,8,0"/>
+                    <Button x:Name="UpdateButton" Content="检查更新" Click="UpdateButton_Click" Margin="0,0,8,0"
+                            ToolTip="检查 GitHub 上的正式版本"/>
+                    <Button x:Name="ExportButton" Style="{StaticResource PrimaryButton}" Click="ExportButton_Click" IsEnabled="False">
+                        <TextBlock Text="导出校正图" Foreground="White"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="276"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20,22">
+                        <TextBlock Text="颜色调整" FontWeight="SemiBold" FontSize="15"/>
+                        <TextBlock Text="拖动后立即更新右侧预览" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,4,0,20"/>
+
+                        <Grid Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="红色 R" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="RedValue" Grid.Column="1" Text="100%" HorizontalAlignment="Right" Foreground="#B93838" FontWeight="SemiBold"/>
+                            <Slider x:Name="RedSlider" Grid.ColumnSpan="2" Margin="0,27,0,0" Minimum="0.5" Maximum="1.5" Value="1" TickFrequency="0.01" SmallChange="0.01" IsSnapToTickEnabled="True" ValueChanged="GainSlider_ValueChanged"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="绿色 G" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="GreenValue" Grid.Column="1" Text="100%" HorizontalAlignment="Right" Foreground="#147D64" FontWeight="SemiBold"/>
+                            <Slider x:Name="GreenSlider" Grid.ColumnSpan="2" Margin="0,27,0,0" Minimum="0.5" Maximum="1.5" Value="1" TickFrequency="0.01" SmallChange="0.01" IsSnapToTickEnabled="True" ValueChanged="GainSlider_ValueChanged"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="蓝色 B" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="BlueValue" Grid.Column="1" Text="100%" HorizontalAlignment="Right" Foreground="#386DB9" FontWeight="SemiBold"/>
+                            <Slider x:Name="BlueSlider" Grid.ColumnSpan="2" Margin="0,27,0,0" Minimum="0.5" Maximum="1.5" Value="1" TickFrequency="0.01" SmallChange="0.01" IsSnapToTickEnabled="True" ValueChanged="GainSlider_ValueChanged"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="64"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="曝光" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="ExposureValue" Grid.Column="1" Text="0.00 EV" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold"/>
+                            <Slider x:Name="ExposureSlider" Grid.ColumnSpan="2" Margin="0,27,0,0" Minimum="-2" Maximum="2" Value="0" TickFrequency="0.01" SmallChange="0.01" IsSnapToTickEnabled="True" ValueChanged="AdjustmentSlider_ValueChanged"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,24">
+                            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="对比度" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="ContrastValue" Grid.Column="1" Text="100%" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold"/>
+                            <Slider x:Name="ContrastSlider" Grid.ColumnSpan="2" Margin="0,27,0,0" Minimum="0.5" Maximum="1.5" Value="1" TickFrequency="0.01" SmallChange="0.01" IsSnapToTickEnabled="True" ValueChanged="AdjustmentSlider_ValueChanged"/>
+                        </Grid>
+
+                        <UniformGrid Columns="2" Margin="0,0,0,12">
+                            <Button Content="恢复默认" Click="ResetButton_Click" Margin="0,0,4,0"/>
+                            <Button Content="保存为默认" Click="SaveConfigButton_Click" Margin="4,0,0,0"/>
+                        </UniformGrid>
+
+                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Margin="0,10,0,18"/>
+                        <TextBlock Text="预览模式" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <UniformGrid Columns="2">
+                            <RadioButton x:Name="OriginalMode" Content="原图" GroupName="PreviewMode" Style="{StaticResource SegmentRadio}" Checked="PreviewMode_Checked"/>
+                            <RadioButton x:Name="CorrectedMode" Content="校正" GroupName="PreviewMode" Style="{StaticResource SegmentRadio}" IsChecked="True" Checked="PreviewMode_Checked"/>
+                        </UniformGrid>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <Grid Grid.Column="1" Margin="20">
+                <Border x:Name="PreviewDropZone" Background="#16191E" CornerRadius="6" ClipToBounds="True"
+                        AllowDrop="True" DragEnter="Preview_DragEnter" DragLeave="Preview_DragLeave"
+                        DragOver="Preview_DragOver" Drop="Preview_Drop">
+                    <Grid>
+                        <Image x:Name="PreviewImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Margin="12"/>
+                        <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="拖入一张 PNG" Foreground="#F1F3F5" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="或点击右上角“打开 PNG”" Foreground="#AEB5BF" Margin="0,8,0,0" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                        <Border x:Name="DropOverlay" Visibility="Collapsed" IsHitTestVisible="False"
+                                Background="#D9147D64" BorderBrush="#5FD0B2" BorderThickness="2" CornerRadius="6">
+                            <TextBlock Text="释放以打开图片" Foreground="White" FontSize="20" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+            <Grid Margin="20,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock x:Name="FileStatus" Text="尚未选择图片" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+                <TextBlock x:Name="WatchStatus" Grid.Column="1" Text="监听关闭" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                <TextBlock x:Name="OperationStatus" Grid.Column="2" Text="就绪" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="16,0,0,0"/>
+            </Grid>
+        </Border>
+    </Grid>
+
+</Window>

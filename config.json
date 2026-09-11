@@ -1,0 +1,15 @@
+{
+  "suffix": "_fixed",
+  "calibrationFile": "calibration.json",
+  "watchPath": "",
+  "redGain": 1.04,
+  "greenGain": 1.0,
+  "blueGain": 0.97,
+  "exposure": 0.0,
+  "postContrast": 1.0,
+  "gamma": 1.45,
+  "blackPoint": 0.015,
+  "whitePoint": 1.0,
+  "contrast": 1.06,
+  "saturation": 1.2
+}
