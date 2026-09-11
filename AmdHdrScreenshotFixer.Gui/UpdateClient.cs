@@ -54,25 +54,40 @@ internal sealed class UpdateClient
         }
     }
 
-    public async Task<UpdateInfo?> CheckAsync(CancellationToken cancellationToken = default)
+    public async Task<UpdateInfo?> CheckAsync(UpdateNetworkSettings? networkSettings = null,
+        CancellationToken cancellationToken = default)
     {
-        using var client = CreateClient();
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(12));
-        var uri = new Uri(ManifestBaseUrl + UpdateTrust.GetManifestFileName(CurrentChannel));
-        using var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
-        response.EnsureSuccessStatusCode();
-        EnsureAllowedResponse(response);
-        if (response.Content.Headers.ContentLength is > UpdateManifestCodec.MaximumManifestSize)
-            throw new InvalidDataException("更新清单超过允许大小。");
-        await using var input = await response.Content.ReadAsStreamAsync(timeout.Token);
-        using var memory = new MemoryStream();
-        await BoundedStream.CopyToAsync(input, memory, UpdateManifestCodec.MaximumManifestSize, timeout.Token);
-        var update = UpdateManifestCodec.ParseAndVerify(Encoding.UTF8.GetString(memory.ToArray()), CurrentChannel);
-        return update.Version > CurrentVersion ? update : null;
+        var settings = (networkSettings ?? UpdateNetworkSettings.Default).Normalize();
+        var original = new Uri(ManifestBaseUrl + UpdateTrust.GetManifestFileName(CurrentChannel));
+        var routes = UpdateRouteBuilder.Build(original, settings);
+        if (routes.Count == 0) throw new InvalidOperationException("没有启用的 GitHub 更新线路。");
+        using var client = CreateClient(settings);
+        var failures = new List<string>();
+        foreach (var route in routes)
+        {
+            try
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(TimeSpan.FromSeconds(12));
+                using var response = await client.GetAsync(route.RequestUri, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+                response.EnsureSuccessStatusCode();
+                EnsureAllowedResponse(response, route);
+                if (response.Content.Headers.ContentLength is > UpdateManifestCodec.MaximumManifestSize)
+                    throw new InvalidDataException("更新清单超过允许大小。");
+                await using var input = await response.Content.ReadAsStreamAsync(timeout.Token);
+                using var memory = new MemoryStream();
+                await BoundedStream.CopyToAsync(input, memory, UpdateManifestCodec.MaximumManifestSize, timeout.Token);
+                var update = UpdateManifestCodec.ParseAndVerify(Encoding.UTF8.GetString(memory.ToArray()), CurrentChannel);
+                return update.Version > CurrentVersion ? update : null;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch (Exception ex) { failures.Add($"{route.DisplayName}: {ex.Message}"); }
+        }
+        throw new HttpRequestException("所有更新线路均失败：" + string.Join("；", failures));
     }
 
     public async Task<PreparedUpdate> DownloadAsync(UpdateInfo update, IProgress<int> progress,
+        UpdateNetworkSettings? networkSettings = null,
         CancellationToken cancellationToken = default)
     {
         if (!CanInstallInPlace) throw new InvalidOperationException("当前目录不能执行就地更新。");
@@ -85,16 +100,36 @@ internal sealed class UpdateClient
             CleanupOldUpdates(Path.GetDirectoryName(root)!);
             var package = Path.Combine(root, "package.zip");
             var temporary = package + ".download";
-            TryDelete(temporary);
-            using var client = CreateClient();
-            using var response = await client.GetAsync(update.DownloadUri, HttpCompletionOption.ResponseHeadersRead,
-                cancellationToken);
-            response.EnsureSuccessStatusCode();
-            EnsureAllowedResponse(response);
-            if (response.Content.Headers.ContentLength is { } size && size != update.Size)
-                throw new InvalidDataException("服务器返回的更新包大小与签名清单不一致。");
-            await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await UpdatePackageStager.StageAsync(source, temporary, package, update, progress, cancellationToken);
+            var settings = (networkSettings ?? UpdateNetworkSettings.Default).Normalize();
+            var routes = UpdateRouteBuilder.Build(update.DownloadUri, settings);
+            if (routes.Count == 0) throw new InvalidOperationException("没有启用的 GitHub 更新线路。");
+            using var client = CreateClient(settings);
+            var failures = new List<string>();
+            var downloaded = false;
+            foreach (var route in routes)
+            {
+                TryDelete(temporary);
+                try
+                {
+                    using var response = await client.GetAsync(route.RequestUri, HttpCompletionOption.ResponseHeadersRead,
+                        cancellationToken);
+                    response.EnsureSuccessStatusCode();
+                    EnsureAllowedResponse(response, route);
+                    if (response.Content.Headers.ContentLength is { } size && size != update.Size)
+                        throw new InvalidDataException("服务器返回的更新包大小与签名清单不一致。");
+                    await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    await UpdatePackageStager.StageAsync(source, temporary, package, update, progress, cancellationToken);
+                    downloaded = true;
+                    break;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                catch (Exception ex)
+                {
+                    TryDelete(temporary);
+                    failures.Add($"{route.DisplayName}: {ex.Message}");
+                }
+            }
+            if (!downloaded) throw new HttpRequestException("所有下载线路均失败：" + string.Join("；", failures));
             var manifest = Path.Combine(root, "update.json");
             await File.WriteAllTextAsync(manifest, update.RawManifest, new UTF8Encoding(false), cancellationToken);
             var launcherDirectory = Path.Combine(root, "launcher");
@@ -127,22 +162,31 @@ internal sealed class UpdateClient
         _ = Process.Start(start) ?? throw new InvalidOperationException("无法启动外部更新器。");
     }
 
-    private static HttpClient CreateClient()
+    private static HttpClient CreateClient(UpdateNetworkSettings settings)
     {
         var handler = new SocketsHttpHandler
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
             ConnectTimeout = TimeSpan.FromSeconds(10), PooledConnectionLifetime = TimeSpan.FromMinutes(10)
         };
+        if (settings.HttpProxy is not null)
+        {
+            handler.Proxy = new WebProxy(settings.HttpProxy);
+            handler.UseProxy = true;
+        }
         var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
         client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("AmdHdrScreenshotFixer", CurrentVersion.ToString(3)));
         return client;
     }
 
-    private static void EnsureAllowedResponse(HttpResponseMessage response)
+    private static void EnsureAllowedResponse(HttpResponseMessage response, UpdateRequestRoute route)
     {
         var uri = response.RequestMessage?.RequestUri;
-        if (uri is null || uri.Scheme != Uri.UriSchemeHttps || !AllowedHosts.Contains(uri.Host))
+        var directAllowed = uri?.Scheme == Uri.UriSchemeHttps && AllowedHosts.Contains(uri.Host);
+        var proxyAllowed = !route.IsDirect && uri is not null &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) &&
+            uri.Host.Equals(route.RequestUri.Host, StringComparison.OrdinalIgnoreCase);
+        if (!directAllowed && !proxyAllowed)
             throw new InvalidDataException("更新请求被重定向到不受信任的地址。");
     }
 

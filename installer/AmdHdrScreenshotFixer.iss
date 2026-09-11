@@ -54,17 +54,25 @@ Filename: "{app}\AmdHdrScreenshotFixer.exe"; Description: "启动 AMD HDR Screen
 [Code]
 function HasDesktopRuntime8: Boolean;
 var
-  Versions: TArrayOfString;
-  I: Integer;
+  FindRec: TFindRec;
+  RuntimeRoot: String;
 begin
   Result := False;
-  if RegGetSubkeyNames(HKLM64, 'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App', Versions) then
-    for I := 0 to GetArrayLength(Versions) - 1 do
-      if Pos('8.', Versions[I]) = 1 then
-      begin
-        Result := True;
-        Exit;
-      end;
+  RuntimeRoot := ExpandConstant('{pf64}\dotnet\shared\Microsoft.WindowsDesktop.App\8.*');
+  if FindFirst(RuntimeRoot, FindRec) then
+  begin
+    try
+      repeat
+        if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+        begin
+          Result := True;
+          Exit;
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
 end;
 
 function InitializeSetup: Boolean;

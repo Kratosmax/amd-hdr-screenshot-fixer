@@ -28,8 +28,8 @@
                     <Button x:Name="WatchFolderButton" Content="监听目录" Click="WatchFolderButton_Click" Margin="0,0,8,0"
                             ToolTip="选择并持久化监听目录"/>
                     <Button Content="打开 PNG" Click="OpenButton_Click" Margin="0,0,8,0"/>
-                    <Button x:Name="UpdateButton" Content="检查更新" Click="UpdateButton_Click" Margin="0,0,8,0"
-                            ToolTip="检查 GitHub 上的正式版本"/>
+                    <Button Content="高级校准" Click="CalibrationButton_Click" Margin="0,0,8,0"/>
+                    <Button Content="设置" Click="SettingsButton_Click" Margin="0,0,8,0"/>
                     <Button x:Name="ExportButton" Style="{StaticResource PrimaryButton}" Click="ExportButton_Click" IsEnabled="False">
                         <TextBlock Text="导出校正图" Foreground="White"/>
                     </Button>
@@ -80,6 +80,28 @@
                             <TextBlock x:Name="ContrastValue" Grid.Column="1" Text="100%" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold"/>
                             <Slider x:Name="ContrastSlider" Grid.ColumnSpan="2" Margin="0,27,0,0" Minimum="0.5" Maximum="1.5" Value="1" TickFrequency="0.01" SmallChange="0.01" IsSnapToTickEnabled="True" ValueChanged="AdjustmentSlider_ValueChanged"/>
                         </Grid>
+                        <Expander Header="高级微调" Margin="0,0,0,18">
+                            <StackPanel Margin="0,14,0,0">
+                                <Grid Margin="0,0,0,18">
+                                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="饱和度" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="SaturationValue" Grid.Column="1" Text="100%" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold"/>
+                                    <Slider x:Name="SaturationSlider" Grid.ColumnSpan="2" Margin="0,27,0,0" Minimum="0" Maximum="2" Value="1" TickFrequency="0.01" SmallChange="0.01" IsSnapToTickEnabled="True" ValueChanged="AdjustmentSlider_ValueChanged"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,18">
+                                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="黑位" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="BlackPointValue" Grid.Column="1" Text="0%" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold"/>
+                                    <Slider x:Name="BlackPointSlider" Grid.ColumnSpan="2" Margin="0,27,0,0" Minimum="0" Maximum="0.25" Value="0" TickFrequency="0.01" SmallChange="0.01" IsSnapToTickEnabled="True" ValueChanged="AdjustmentSlider_ValueChanged"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="白位" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="WhitePointValue" Grid.Column="1" Text="100%" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold"/>
+                                    <Slider x:Name="WhitePointSlider" Grid.ColumnSpan="2" Margin="0,27,0,0" Minimum="0.5" Maximum="1.5" Value="1" TickFrequency="0.01" SmallChange="0.01" IsSnapToTickEnabled="True" ValueChanged="AdjustmentSlider_ValueChanged"/>
+                                </Grid>
+                            </StackPanel>
+                        </Expander>
 
                         <UniformGrid Columns="2" Margin="0,0,0,12">
                             <Button Content="恢复默认" Click="ResetButton_Click" Margin="0,0,4,0"/>

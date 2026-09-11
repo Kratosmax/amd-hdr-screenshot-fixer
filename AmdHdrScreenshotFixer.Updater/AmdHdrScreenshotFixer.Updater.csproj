@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <RollForward>Major</RollForward>
     <TargetFramework>net8.0-windows</TargetFramework>
     <AssemblyName>AmdHdrScreenshotFixer.Updater</AssemblyName>
     <RootNamespace>AmdHdrScreenshotFixer.Updater</RootNamespace>

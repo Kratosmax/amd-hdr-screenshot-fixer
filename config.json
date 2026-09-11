@@ -7,6 +7,17 @@
   "blueGain": 0.97,
   "exposure": 0.0,
   "postContrast": 1.0,
+  "postSaturation": 1.0,
+  "postBlackPoint": 0.0,
+  "postWhitePoint": 1.0,
+  "startWithWindows": false,
+  "autoUpdateEnabled": true,
+  "updateNetwork": {
+    "githubProxies": [
+      { "baseUrl": "", "priority": 10, "isDirect": true }
+    ],
+    "httpProxy": null
+  },
   "gamma": 1.45,
   "blackPoint": 0.015,
   "whitePoint": 1.0,

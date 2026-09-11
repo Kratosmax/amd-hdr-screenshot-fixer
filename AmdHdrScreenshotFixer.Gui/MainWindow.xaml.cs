@@ -25,7 +25,8 @@ public partial class MainWindow : Window
     private bool updateCheckRunning;
 
     public MainWindow(string? initialPath = null, string? screenshotPath = null, string? qaExportPath = null,
-        string? updatedFrom = null)
+        string? updatedFrom = null, string? settingsScreenshotPath = null,
+        string? calibrationScreenshotPath = null)
     {
         InitializeComponent();
         screenshotWatcher = new ScreenshotWatcher(configStore);
@@ -39,8 +40,12 @@ public partial class MainWindow : Window
         Loaded += async (_, _) =>
         {
             if (updatedFrom is not null) OperationStatus.Text = $"已更新到 {UpdateClient.CurrentVersion.ToString(3)}";
-            if (screenshotPath is null && qaExportPath is null) await CheckForUpdatesAsync(false);
+            if (screenshotPath is null && qaExportPath is null && settingsScreenshotPath is null &&
+                calibrationScreenshotPath is null && config.AutoUpdateEnabled)
+                await CheckForUpdatesAsync(false);
         };
+        if (settingsScreenshotPath is not null || calibrationScreenshotPath is not null)
+            Loaded += async (_, _) => await CaptureAuxiliaryWindowsAsync(settingsScreenshotPath, calibrationScreenshotPath);
         if (initialPath is not null) Loaded += async (_, _) =>
         {
             await LoadImageAsync(initialPath);
@@ -55,7 +60,7 @@ public partial class MainWindow : Window
                 try
                 {
                     await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                    CaptureWindow(screenshotPath);
+                    WindowCapture.Save(this, screenshotPath);
                     Application.Current.Shutdown();
                 }
                 catch (Exception ex)
@@ -136,6 +141,9 @@ public partial class MainWindow : Window
         BlueValue.Text = $"{BlueSlider.Value:P0}";
         ExposureValue.Text = $"{ExposureSlider.Value:+0.00;-0.00;0.00} EV";
         ContrastValue.Text = $"{ContrastSlider.Value:P0}";
+        SaturationValue.Text = $"{SaturationSlider.Value:P0}";
+        BlackPointValue.Text = $"{BlackPointSlider.Value:P0}";
+        WhitePointValue.Text = $"{WhitePointSlider.Value:P0}";
     }
 
     private void RefreshPreview()
@@ -147,7 +155,8 @@ public partial class MainWindow : Window
         }
         if (correctedBase is not null)
             PreviewImage.Source = ImageProcessor.Render(correctedBase, RedSlider.Value, GreenSlider.Value, BlueSlider.Value,
-                ExposureSlider.Value, ContrastSlider.Value);
+                ExposureSlider.Value, ContrastSlider.Value, SaturationSlider.Value,
+                BlackPointSlider.Value, WhitePointSlider.Value);
     }
 
     private async void OpenButton_Click(object sender, RoutedEventArgs e)
@@ -156,49 +165,97 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) == true) await LoadImageAsync(dialog.FileName);
     }
 
-    private async void UpdateButton_Click(object sender, RoutedEventArgs e) => await CheckForUpdatesAsync(true);
-
-    private async Task CheckForUpdatesAsync(bool userInitiated)
+    private async Task<string> CheckForUpdatesAsync(bool userInitiated,
+        UpdateNetworkSettings? networkSettings = null, Window? owner = null)
     {
-        if (updateCheckRunning) return;
+        if (updateCheckRunning) return "已有更新检查正在进行";
         updateCheckRunning = true;
-        UpdateButton.IsEnabled = false;
         if (userInitiated) OperationStatus.Text = "正在检查更新...";
         try
         {
-            var update = await updateClient.CheckAsync();
+            var network = networkSettings ?? config.UpdateNetwork;
+            var update = await updateClient.CheckAsync(network);
             if (update is null)
             {
                 if (userInitiated) OperationStatus.Text = $"已是最新版本 {UpdateClient.CurrentVersion.ToString(3)}";
-                return;
+                return OperationStatus.Text;
             }
-            if (!userInitiated && config.SkippedVersion == update.Version.ToString(3)) return;
+            if (!userInitiated && config.SkippedVersion == update.Version.ToString(3)) return "已跳过此版本";
             var dialog = new UpdateWindow(update, updateClient.CanInstallInPlace, async progress =>
             {
-                var prepared = await updateClient.DownloadAsync(update, progress);
+                var prepared = await updateClient.DownloadAsync(update, progress, network);
                 UpdateClient.LaunchUpdater(prepared);
                 Application.Current.Shutdown();
             }, () =>
             {
                 config.SkippedVersion = update.Version.ToString(3);
                 configStore.SaveSkippedVersion(config.SkippedVersion);
-            }) { Owner = this };
+            }) { Owner = owner ?? this };
             dialog.ShowDialog();
+            return $"发现版本 {update.Version.ToString(3)}";
         }
         catch (Exception ex) when (!userInitiated)
         {
             System.Diagnostics.Debug.WriteLine($"Background update check failed: {ex.Message}");
+            return "后台检查失败";
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "检查更新失败", MessageBoxButton.OK, MessageBoxImage.Warning);
             OperationStatus.Text = "检查更新失败";
+            return $"检查失败：{ex.Message}";
         }
         finally
         {
             updateCheckRunning = false;
-            UpdateButton.IsEnabled = true;
         }
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsWindow? window = null;
+        window = new SettingsWindow(config, configStore,
+            network => CheckForUpdatesAsync(true, network, window)) { Owner = this };
+        window.ShowDialog();
+    }
+
+    private async Task CaptureAuxiliaryWindowsAsync(string? settingsPath, string? calibrationPath)
+    {
+        try
+        {
+            if (settingsPath is not null)
+            {
+                var settings = new SettingsWindow(config, configStore, _ => Task.FromResult("QA")) { Owner = this };
+                settings.Show();
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                WindowCapture.Save(settings, settingsPath);
+                settings.Close();
+            }
+            if (calibrationPath is not null)
+            {
+                var calibrationWindow = new CalibrationWindow(configStore, config) { Owner = this };
+                calibrationWindow.Show();
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                WindowCapture.Save(calibrationWindow, calibrationPath);
+                calibrationWindow.Close();
+            }
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            var failurePath = settingsPath ?? calibrationPath;
+            if (failurePath is not null) File.WriteAllText(Path.GetFullPath(failurePath) + ".error.txt", ex.ToString());
+            Application.Current.Shutdown(1);
+        }
+    }
+
+    private async void CalibrationButton_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new CalibrationWindow(configStore, config) { Owner = this };
+        if (window.ShowDialog() != true || !window.Applied) return;
+        calibration = configStore.LoadCalibration(config);
+        if (inputPath is not null) await LoadImageAsync(inputPath);
+        OperationStatus.Text = "已应用设备校准，可继续微调并保存默认值";
     }
 
     private void WatchToggle_Checked(object sender, RoutedEventArgs e)
@@ -317,11 +374,14 @@ public partial class MainWindow : Window
             var blue = BlueSlider.Value;
             var exposure = ExposureSlider.Value;
             var postContrast = ContrastSlider.Value;
+            var postSaturation = SaturationSlider.Value;
+            var postBlackPoint = BlackPointSlider.Value;
+            var postWhitePoint = WhitePointSlider.Value;
             ExportButton.IsEnabled = false;
             OperationStatus.Text = "正在导出...";
             Mouse.OverrideCursor = Cursors.Wait;
             await Task.Run(() => ImageProcessor.Export(sourcePath, destinationPath, config, calibration,
-                red, green, blue, exposure, postContrast));
+                red, green, blue, exposure, postContrast, postSaturation, postBlackPoint, postWhitePoint));
             OperationStatus.Text = "导出完成";
             return true;
         }
@@ -343,12 +403,16 @@ public partial class MainWindow : Window
         try
         {
             configStore.SaveAdjustments(RedSlider.Value, GreenSlider.Value, BlueSlider.Value,
-                ExposureSlider.Value, ContrastSlider.Value);
+                ExposureSlider.Value, ContrastSlider.Value, SaturationSlider.Value,
+                BlackPointSlider.Value, WhitePointSlider.Value);
             config.RedGain = RedSlider.Value;
             config.GreenGain = GreenSlider.Value;
             config.BlueGain = BlueSlider.Value;
             config.Exposure = ExposureSlider.Value;
             config.PostContrast = ContrastSlider.Value;
+            config.PostSaturation = SaturationSlider.Value;
+            config.PostBlackPoint = BlackPointSlider.Value;
+            config.PostWhitePoint = WhitePointSlider.Value;
             OperationStatus.Text = "已保存默认调整参数";
         }
         catch (Exception ex)
@@ -370,6 +434,9 @@ public partial class MainWindow : Window
         BlueSlider.Value = config.BlueGain;
         ExposureSlider.Value = config.Exposure;
         ContrastSlider.Value = config.PostContrast;
+        SaturationSlider.Value = config.PostSaturation;
+        BlackPointSlider.Value = config.PostBlackPoint;
+        WhitePointSlider.Value = config.PostWhitePoint;
     }
 
     private void PreviewMode_Checked(object sender, RoutedEventArgs e)
@@ -410,18 +477,4 @@ public partial class MainWindow : Window
         return files?.Length == 1 && Path.GetExtension(files[0]).Equals(".png", StringComparison.OrdinalIgnoreCase);
     }
 
-    private void CaptureWindow(string path)
-    {
-        UpdateLayout();
-        var dpi = VisualTreeHelper.GetDpi(this);
-        var width = Math.Max(1, (int)Math.Ceiling(ActualWidth * dpi.DpiScaleX));
-        var height = Math.Max(1, (int)Math.Ceiling(ActualHeight * dpi.DpiScaleY));
-        var bitmap = new RenderTargetBitmap(width, height, dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
-        bitmap.Render(this);
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        using var stream = File.Create(path);
-        encoder.Save(stream);
-    }
 }

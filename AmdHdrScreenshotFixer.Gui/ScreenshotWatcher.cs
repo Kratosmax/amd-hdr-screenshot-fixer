@@ -91,7 +91,8 @@ public sealed class ScreenshotWatcher : IDisposable
                 var calibration = configStore.LoadCalibration(config);
                 Directory.CreateDirectory(outputDirectory);
                 ImageProcessor.Export(path, outputPath, config, calibration,
-                    config.RedGain, config.GreenGain, config.BlueGain, config.Exposure, config.PostContrast);
+                    config.RedGain, config.GreenGain, config.BlueGain, config.Exposure, config.PostContrast,
+                    config.PostSaturation, config.PostBlackPoint, config.PostWhitePoint);
             }
             finally
             {
