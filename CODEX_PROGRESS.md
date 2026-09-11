@@ -7,16 +7,17 @@
 - WPF GUI, PNG correction, persistent defaults, drag/drop and integrated watcher are implemented.
 - App icon, shared update core, external updater, release tool, Inno Setup and tag workflow are released.
 - RSA public key is committed in `AmdHdrScreenshotFixer.Core/UpdateTrust.cs`; the private key remains outside Git. GitHub Secret `UPDATE_SIGNING_KEY` was configured on 2026-09-11 with explicit authorization.
-- Release `v0.1.0` is published at `https://github.com/Kratosmax/amd-hdr-screenshot-fixer/releases/tag/v0.1.0`.
-- GitHub Actions run `34572732245` completed successfully in 3m21s.
+- Release `v0.2.0` is published at `https://github.com/Kratosmax/amd-hdr-screenshot-fixer/releases/tag/v0.2.0`.
+- Release commit `37833ca662ae0c787b237294bcc3f200f537cde2` is tagged `v0.2.0`.
+- GitHub Actions run `34594779432` completed successfully in 2m52s.
 
-## Current release candidate
+## Current release
 
 - The `v0.2.0` source adds three-pair-or-more offline cross-validation calibration, bounded 9³/17³ 3D LUT fitting, ΔE2000 scoring, result/reference preview and factory-model recovery.
 - Saturation, black point and white point are part of the saved final adjustment layer used by preview, export and the watcher.
 - A PinNote-style unified settings window now controls automatic update checks, GitHub prefix routes, an independent HTTP proxy and current-user startup registration. No named profile system is planned per user direction.
 - Lite projects allow major runtime roll-forward. The Lite installer runtime check now inspects the actual standard x64 `Microsoft.WindowsDesktop.App\8.*` directory instead of relying on registry subkeys that can be absent.
-- A signed local `v0.2.0` candidate has passed the checks below. Online publication must still be verified independently after the tag workflow completes.
+- The signed local candidate and independently downloaded online `v0.2.0` assets passed the checks below.
 
 ## Local verification (2026-09-11)
 
@@ -29,14 +30,16 @@
 - The real Lite package opened the unified settings window and the real Full package opened the calibration window; screenshots are under ignored `temp/qa-v0.2.0` with no visible overlap or clipping.
 - The local Lite portable preview ZIP is `temp/release/v0.2.0/AmdHdrScreenshotFixer-0.2.0-Lite-Portable.zip`, size 259,939 bytes, SHA-256 `4BAF1F7D838F8E8BCACD2B7ADB6B40A165D0597E7CD12DCA2DDE931D8BD6977B`.
 - Both `update-lite.json` and `update-full.json` passed `AmdHdrScreenshotFixer.ReleaseTool verify` against their real candidate ZIPs.
-- Commit, push, tag and Release publication were explicitly authorized on 2026-09-11. Do not claim success until the workflow and online assets are independently verified.
+- Commit, push, tag and Release publication were explicitly authorized and completed on 2026-09-11.
 
-## Published v0.1.0 baseline
+## Release verification
 
-- The Release is public, non-draft and non-prerelease with all eight expected assets.
-- Online Full/Lite portable packages and all three manifests match `SHA256SUMS.txt` and GitHub asset digests.
-- `update-full.json`, `update-lite.json` and `update.json` pass RSA signature, channel, hash and package-structure verification.
-- Online Full and Lite portable candidates both opened a rendered 1120x720 WPF main window; screenshots are retained under the ignored `temp/online-v0.1.0` directory.
+- The `v0.2.0` Release is public, non-draft and non-prerelease with all eight expected assets.
+- All seven checksummed assets match online `SHA256SUMS.txt` and GitHub asset digests; `SHA256SUMS.txt` is the eighth asset.
+- Online `update-full.json`, `update-lite.json` and compatibility `update.json` pass RSA signature, channel, hash and package-structure verification. `update.json` is byte-identical to `update-lite.json`.
+- GitHub's latest API and `releases/latest/download/update.json` both resolve to `v0.2.0`.
+- The original published `v0.1.0` Lite client discovered, downloaded, verified and handed off the online `v0.2.0` package to its external updater. The temporary install changed to version `0.2.0`, retained the Lite channel and restarted successfully.
+- The online Lite package opened the unified settings window after that upgrade, and the independently extracted online Full package opened the calibration window. Screenshots are retained under ignored `temp/qa-v0.2.0`.
 
 ## Required verification
 
@@ -52,4 +55,4 @@ Verify both signed manifests with `AmdHdrScreenshotFixer.ReleaseTool`, run the F
 - Never commit PEM/PFX files, user screenshots, logs, build outputs or `%LOCALAPPDATA%` data.
 - Do not publish a manifest without the repository signing key.
 - Do not change `UpdateTrust.ProductId`, channels, public key, release URL prefix or package marker names without a migration plan.
-- This first release has no earlier signed client, so an actual previous-version upgrade can only be exercised when preparing `0.2.0`.
+- Preserve the verified `v0.1.0 -> v0.2.0` update protocol unless a future release includes an explicit migration plan and regression coverage.
