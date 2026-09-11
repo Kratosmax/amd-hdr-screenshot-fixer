@@ -6,7 +6,7 @@
 - Repository target: `https://github.com/Kratosmax/amd-hdr-screenshot-fixer`.
 - WPF GUI, PNG correction, persistent defaults, drag/drop and integrated watcher are implemented.
 - App icon, shared update core, external updater, release tool, Inno Setup and tag workflow are implemented locally.
-- RSA public key is committed in `AmdHdrScreenshotFixer.Core/UpdateTrust.cs`; the private key remains outside Git. Uploading it to GitHub Secret `UPDATE_SIGNING_KEY` is pending explicit sensitive-data authorization.
+- RSA public key is committed in `AmdHdrScreenshotFixer.Core/UpdateTrust.cs`; the private key remains outside Git. GitHub Secret `UPDATE_SIGNING_KEY` was configured on 2026-09-11 with explicit authorization.
 
 ## Required verification
 
